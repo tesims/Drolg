@@ -1,0 +1,7 @@
+Flask
+Flask-Login
+Flask-SQLAlchemy
+spotipy
+Werkzeug
+PyJWT
+Flask-Migrate

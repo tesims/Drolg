@@ -1,0 +1,17 @@
+{% extends 'layout.html' %}
+{% block title %}Create Playlist{% endblock %}
+
+{% block content %}
+<div class="row mt-3">
+    <div class="col-md-6">
+        <h2>Create New Playlist</h2>
+        <form method="post" action="{{ url_for('views.create_playlist', event_id=event_id) }}">
+            <div class="mb-3">
+                <label for="title" class="form-label">Playlist Title</label>
+                <input type="text" class="form-control" id="title" name="title" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Playlist</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

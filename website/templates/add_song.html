@@ -1,0 +1,29 @@
+{% extends 'layout.html' %}
+{% block title %}Add Song{% endblock %}
+
+{% block content %}
+<div class="row mt-3">
+    <div class="col-md-6">
+        <h2>Add New Song</h2>
+        <form method="post" action="{{ url_for('views.add_song', playlist_id=playlist_id) }}">
+            <div class="mb-3">
+                <label for="title" class="form-label">Song Title</label>
+                <input type="text" class="form-control" id="title" name="title" required>
+            </div>
+            <div class="mb-3">
+                <label for="artist" class="form-label">Artist</label>
+                <input type="text" class="form-control" id="artist" name="artist" required>
+            </div>
+            <div class="mb-3">
+                <label for="mood_id" class="form-label">Mood</label>
+                <select class="form-control" id="mood_id" name="mood_id" required>
+                    {% for mood in moods %}
+                    <option value="{{ mood.id }}">{{ mood.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Song</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

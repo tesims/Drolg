@@ -1,0 +1,29 @@
+{% extends 'layout.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mt-3">
+    <div class="col-md-6">
+        <h2>My Hosted Events</h2>
+        <a href="{{ url_for('views.create_event') }}" class="btn btn-success mb-3">Create New Event</a>
+        <div class="list-group">
+            {% for event in hosted_events %}
+            <a href="{{ url_for('views.event', event_id=event.id) }}" class="list-group-item list-group-item-action">
+                {{ event.title }} - {{ event.date_event.strftime('%Y-%m-%d %H:%M') }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <h2>Events I'm Attending</h2>
+        <a href="{{ url_for('views.join_event') }}" class="btn btn-primary mb-3">Join Event</a>
+        <div class="list-group">
+            {% for event in joined_events %}
+            <a href="{{ url_for('views.event', event_id=event.id) }}" class="list-group-item list-group-item-action">
+                {{ event.title }} - {{ event.date_event.strftime('%Y-%m-%d %H:%M') }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
