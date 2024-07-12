@@ -1,12 +1,97 @@
+/* Custom styles on top of Bootstrap */
+
 body {
-    padding-top: 20px;
+    padding-top: 60px; /* Adjust for fixed navbar */
+    background-color: #f8f9fa;
 }
 
-.container {
-    width: 80%;
-    margin: auto;
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
 }
 
 .navbar-brand {
     font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.container {
+    max-width: 1140px;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Custom styles for the dashboard */
+.dashboard-card {
+    height: 100%;
+}
+
+.dashboard-card .card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-card .card-title {
+    margin-bottom: auto;
+}
+
+/* Custom styles for events */
+.event-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.event-item {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: #fff;
+    border-radius: 0.25rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+/* Custom styles for playlist */
+.playlist-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.playlist-item img {
+    width: 50px;
+    height: 50px;
+    margin-right: 1rem;
+    object-fit: cover;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+    }
+
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
 }

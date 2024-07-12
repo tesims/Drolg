@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+{% block title %}{{ event.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1 class="mb-4">{{ event.title }}</h1>
+        <p><strong>Description:</strong> {{ event.description }}</p>
+        <p><strong>Date:</strong> {{ event.date_event.strftime('%Y-%m-%d %H:%M') }}</p>
+        <p><strong>End Time:</strong> {{ event.end_time.strftime('%Y-%m-%d %H:%M') }}</p>
+        <p><strong>Mood:</strong> {{ event.mood.name }}</p>
+        <p><strong>Host:</strong> {{ event.host.username }}</p>
+        <p><strong>Invite Code:</strong> {{ event.invite_code }}</p>
+        
+        {% if current_user.id == event.host_id %}
+            <a href="{{ url_for('views.edit_event', event_id=event.id) }}" class="btn btn-primary">Edit Event</a>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteEventModal">
+                Delete Event
+            </button>
+        {% endif %}
+    </div>
+    <div class="col-md-4">
+        <h3>Attendees</h3>
+        <ul class="list-group">
+            {% for attendee in event.attendees %}
+                <li class="list-group-item">{{ attendee.username }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h2>Playlist</h2>
+        <div id="spotifyPlayer">
+            <!-- Spotify player will be embedded here -->
+        </div>
+        <ul class="list-group mt-3">
+            {% for track in tracks %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ track.track.name }} - {{ track.track.artists[0].name }}
+                    <button class="btn btn-sm btn-outline-primary vote-button" data-song-id="{{ track.track.id }}">
+                        Vote <span class="badge bg-secondary">{{ track.votes|default(0) }}</span>
+                    </button>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- Delete Event Modal -->
+<div class="modal fade" id="deleteEventModal" tabindex="-1" aria-labelledby="deleteEventModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteEventModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this event? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('views.delete_event', event_id=event.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete Event</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
+<script>
+    window.onSpotifyWebPlaybackSDKReady = () => {
+        const token = '{{ spotify_token }}';
+        const player = new Spotify.Player({
+            name: 'Party Playlist Web Player',
+            getOAuthToken: cb => { cb(token); }
+        });
+
+        // Connect to the player!
+        player.connect();
+    };
+
+    // Handle voting
+    document.querySelectorAll('.vote-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const songId = this.dataset.songId;
+            fetch(`/songs/vote/${songId}`, {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const voteCount = this.querySelector('.badge');
+                        voteCount.textContent = data.new_vote_count;
+                    }
+                });
+        });
+    });
+</script>
+{% endblock %}

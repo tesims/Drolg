@@ -1,20 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from .models import db, User
-import jwt
-import datetime
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
-from urllib.parse import quote, urlparse, parse_qs
+from .spotify_utils import create_spotify_oauth, get_spotify_client, refresh_token, get_spotify_user_info
+from sqlalchemy.exc import SQLAlchemyError
+from flask_login import login_user, logout_user, login_required
+
 
 auth = Blueprint('auth', __name__)
-
-def create_spotify_oauth():
-    return SpotifyOAuth(
-        client_id=current_app.config['SPOTIPY_CLIENT_ID'],
-        client_secret=current_app.config['SPOTIPY_CLIENT_SECRET'],
-        redirect_uri=current_app.config['SPOTIPY_REDIRECT_URI'],
-        scope="user-library-read playlist-modify-public playlist-modify-private")
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
@@ -22,81 +14,26 @@ def register():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        password_hash = generate_password_hash(password)
-
-        if User.query.filter_by(username=username).first():
-            flash('Username already exists. Please choose a different one.', 'danger')
-            return redirect(url_for('auth.register'))
-
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered. Please use a different email.', 'danger')
-            return redirect(url_for('auth.register'))
-
-        # Create user in the database
-        user = User(username=username, email=email, password_hash=password_hash)
-        db.session.add(user)
-        db.session.commit()
-
-        # Redirect to Spotify authentication
-        session['new_user_id'] = user.id
-        return redirect(url_for('auth.spotify_login'))
-    return render_template('register.html')
-
-@auth.route('/spotify_login')
-def spotify_login():
-    sp_oauth = create_spotify_oauth()
-    
-    # Debug: Print all relevant configuration
-    print(f"SPOTIPY_CLIENT_ID: {current_app.config.get('SPOTIPY_CLIENT_ID', 'Not set')}")
-    print(f"SPOTIPY_CLIENT_SECRET: {'Set' if current_app.config.get('SPOTIPY_CLIENT_SECRET') else 'Not set'}")
-    print(f"SPOTIPY_REDIRECT_URI: {current_app.config.get('SPOTIPY_REDIRECT_URI', 'Not set')}")
-    
-    # Get and print the authorization URL
-    auth_url = sp_oauth.get_authorize_url()
-    print(f"Generated Auth URL: {auth_url}")
-    
-    # Parse and print the redirect_uri from the auth_url
-    from urllib.parse import urlparse, parse_qs
-    parsed_url = urlparse(auth_url)
-    redirect_uri = parse_qs(parsed_url.query).get('redirect_uri', ['Not found'])[0]
-    print(f"Redirect URI in auth URL: {redirect_uri}")
-    
-    # Check if the redirect_uri in the auth_url matches the configured one
-    configured_uri = current_app.config['SPOTIPY_REDIRECT_URI']
-    if quote(configured_uri) != quote(redirect_uri):
-        print(f"WARNING: Mismatch in redirect URIs!")
-        print(f"Configured: {configured_uri}")
-        print(f"In auth URL: {redirect_uri}")
-    
-    return redirect(auth_url)
-
-@auth.route('/callback')
-def callback():
-    sp_oauth = create_spotify_oauth()
-    session.clear()
-    code = request.args.get('code')
-    token_info = sp_oauth.get_access_token(code)
-
-    if token_info:
-        sp = spotipy.Spotify(auth=token_info['access_token'])
-        user_info = sp.current_user()
         
-        # Save user info to the database
-        user_id = session.get('new_user_id')
-        if user_id:
-            user = User.query.get(user_id)
-            user.spotify_id = user_info['id']
-            user.spotify_token = token_info['access_token']
-            db.session.commit()
-            session.pop('new_user_id', None)
-            flash('Registration and Spotify authentication successful. Please log in.', 'success')
-            return redirect(url_for('auth.login'))
-        else:
-            flash('Failed to authenticate with Spotify.', 'danger')
+        user = User.query.filter_by(username=username).first()
+        if user:
+            flash('Username already exists.', 'danger')
             return redirect(url_for('auth.register'))
-    else:
-        flash('Failed to authenticate with Spotify.', 'danger')
-        return redirect(url_for('auth.register'))
+        
+        user = User.query.filter_by(email=email).first()
+        if user:
+            flash('Email already registered.', 'danger')
+            return redirect(url_for('auth.register'))
+        
+        new_user = User(username=username, email=email, password_hash=generate_password_hash(password))
+        db.session.add(new_user)
+        db.session.commit()
+        
+        session['user_id'] = new_user.id
+        flash('Registration successful. Please link your Spotify account.', 'success')
+        return redirect(url_for('auth.spotify_login'))
+    
+    return render_template('register.html')
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
@@ -104,19 +41,103 @@ def login():
         username = request.form['username']
         password = request.form['password']
         user = User.query.filter_by(username=username).first()
-
-        if not user or not check_password_hash(user.password_hash, password):
-            flash('Invalid username or password. Please try again.', 'danger')
-            return redirect(url_for('auth.login'))
-
-        token = jwt.encode({'user_id': user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)}, current_app.config['SECRET_KEY'], algorithm="HS256")
-        session['token'] = token
-        flash('Login successful!', 'success')
-        return redirect(url_for('views.dashboard'))
+        
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user)
+            flash('Login successful!', 'success')
+            return redirect(url_for('views.dashboard'))
+        else:
+            flash('Invalid username or password.', 'danger')
+    
     return render_template('login.html')
 
 @auth.route('/logout')
+@login_required
 def logout():
-    session.pop('token', None)
+    logout_user()
     flash('You have been logged out.', 'success')
     return redirect(url_for('auth.login'))
+
+@auth.route('/spotify_login')
+def spotify_login():
+    if 'user_id' not in session:
+        flash('Please log in first.', 'warning')
+        return redirect(url_for('auth.login'))
+    
+    sp_oauth = create_spotify_oauth()
+    auth_url = sp_oauth.get_authorize_url()
+    return redirect(auth_url)
+
+@auth.route('/callback')
+def callback():
+    if 'user_id' not in session:
+        flash('Session expired. Please log in again.', 'warning')
+        return redirect(url_for('auth.login'))
+
+    sp_oauth = create_spotify_oauth()
+    session.pop('token_info', None)
+    code = request.args.get('code')
+    
+    try:
+        token_info = sp_oauth.get_access_token(code)
+    except Exception as e:
+        flash('Failed to get access token from Spotify. Please try again.', 'danger')
+        return redirect(url_for('auth.spotify_login'))
+
+    if not token_info:
+        flash('Failed to get access token from Spotify. Please try again.', 'danger')
+        return redirect(url_for('auth.spotify_login'))
+
+    session['token_info'] = token_info
+
+    spotify_user_info = get_spotify_user_info(token_info['access_token'])
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        flash('User not found. Please register again.', 'danger')
+        return redirect(url_for('auth.register'))
+
+    try:
+        user.spotify_id = spotify_user_info['id']
+        user.spotify_token = token_info['access_token']
+        user.refresh_token = token_info['refresh_token']
+        user.token_expiry = int(token_info['expires_at'])
+        db.session.commit()
+        flash('Spotify account linked successfully!', 'success')
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        flash('An error occurred while linking your Spotify account. Please try again.', 'danger')
+        current_app.logger.error(f"Database error: {str(e)}")
+        return redirect(url_for('auth.spotify_login'))
+
+    return redirect(url_for('views.dashboard'))
+
+@auth.route('/refresh_token')
+def refresh_spotify_token():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.refresh_token:
+        return redirect(url_for('auth.spotify_login'))
+
+    token_info = refresh_token(user.refresh_token)
+    session['token_info'] = token_info
+    return redirect(url_for('views.dashboard'))
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.refresh_token:
+        return redirect(url_for('auth.spotify_login'))
+
+    sp_oauth = create_spotify_oauth()
+    token_info = sp_oauth.refresh_access_token(user.refresh_token)
+
+    user.spotify_token = token_info['access_token']
+    user.refresh_token = token_info['refresh_token']
+    user.token_expiry = int(token_info['expires_at'])
+    db.session.commit()
+
+    session['token_info'] = token_info
+    return redirect(url_for('views.dashboard'))

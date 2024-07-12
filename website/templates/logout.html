@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+{% block title %}Logged Out{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="mb-4">You have been logged out</h1>
+    <p>Thank you for using Party Playlist. We hope to see you again soon!</p>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Log In Again</a>
+</div>
+{% endblock %}

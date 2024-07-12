@@ -1,24 +1,103 @@
-{% extends 'layout.html' %}
-{% block title %}Playlist Details{% endblock %}
+{% extends "layout.html" %}
+{% block title %}{{ event.title }} - Playlist{% endblock %}
 
 {% block content %}
-<div class="row mt-3">
-    <div class="col-md-12">
-        <h2>Playlist: {{ playlist.title }}</h2>
-        <a href="{{ url_for('views.add_song', playlist_id=playlist.id) }}" class="btn btn-success mb-3">Add Song</a>
-        <div class="list-group">
-            {% for song in songs %}
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                    {{ song.title }} by {{ song.artist }} 
-                    <span class="badge bg-primary">{{ song.votes|length }} votes</span>
-                </div>
-                <form action="{{ url_for('views.vote_song', song_id=song.id) }}" method="post">
-                    <button type="submit" class="btn btn-sm btn-primary">Vote</button>
-                </form>
+<h1 class="mb-4">{{ event.title }} - Playlist</h1>
+<p><strong>Event Description:</strong> {{ event.description }}</p>
+<p><strong>Start Time:</strong> {{ event.start_time.strftime('%Y-%m-%d %H:%M') }}</p>
+<p><strong>End Time:</strong> {{ event.end_time.strftime('%Y-%m-%d %H:%M') }}</p>
+<p><strong>Mood:</strong> {{ event.mood.name }}</p>
+
+<h2 class="mt-4">Playlist: {{ playlist.name }}</h2>
+<div id="playlist-container">
+    {% for track in playlist_tracks %}
+    <div class="card mb-2">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title">{{ track.name }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{ track.artists[0].name }}</h6>
             </div>
-            {% endfor %}
+            <div>
+                <button class="btn btn-sm btn-outline-primary vote-button" data-track-id="{{ track.id }}" data-vote="up">
+                    👍 <span class="vote-count">{{ track.votes.upvotes }}</span>
+                </button>
+                <button class="btn btn-sm btn-outline-danger vote-button" data-track-id="{{ track.id }}" data-vote="down">
+                    👎 <span class="vote-count">{{ track.votes.downvotes }}</span>
+                </button>
+            </div>
         </div>
     </div>
+    {% endfor %}
 </div>
+
+<h3 class="mt-4">Add a Song</h3>
+<form id="search-form" class="mb-3">
+    <div class="input-group">
+        <input type="text" class="form-control" id="search-query" placeholder="Search for a song...">
+        <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+</form>
+
+<div id="search-results"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Handle voting
+    document.querySelectorAll('.vote-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const trackId = this.dataset.trackId;
+            const voteType = this.dataset.vote;
+            fetch(`/vote/${trackId}/${voteType}`, {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.querySelector('.vote-count').textContent = data.new_count;
+                    }
+                });
+        });
+    });
+
+    // Handle song search and add
+    document.getElementById('search-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = document.getElementById('search-query').value;
+        fetch(`/search_songs?query=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsContainer = document.getElementById('search-results');
+                resultsContainer.innerHTML = '';
+                data.tracks.forEach(track => {
+                    const trackElement = document.createElement('div');
+                    trackElement.className = 'card mb-2';
+                    trackElement.innerHTML = `
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title">${track.name}</h5>
+                                <h6 class="card-subtitle mb-2 text-muted">${track.artists[0].name}</h6>
+                            </div>
+                            <button class="btn btn-sm btn-success add-song" data-track-id="${track.id}">Add to Playlist</button>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(trackElement);
+                });
+            });
+    });
+
+    // Handle adding songs to playlist
+    document.getElementById('search-results').addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-song')) {
+            const trackId = e.target.dataset.trackId;
+            fetch(`/add_song/${trackId}`, {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Song added to playlist!');
+                        location.reload(); // Refresh to show updated playlist
+                    }
+                });
+        }
+    });
+</script>
 {% endblock %}

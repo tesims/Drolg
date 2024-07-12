@@ -1,0 +1,16 @@
+{% extends 'layout.html' %}
+{% block title %}Link Spotify Account{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <h2 class="mb-4">Link Your Spotify Account</h2>
+            <p>To use all features of our app, please link your Spotify account.</p>
+            <a href="{{ url_for('auth.spotify_login') }}" class="btn btn-success btn-lg">
+                <i class="fab fa-spotify me-2"></i> Link Spotify Account
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

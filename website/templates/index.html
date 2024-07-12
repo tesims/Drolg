@@ -1,13 +1,28 @@
-{% extends 'layout.html' %}
-{% block title %}Home{% endblock %}
+{% extends "layout.html" %}
+{% block title %}Welcome to Party Playlist{% endblock %}
 
 {% block content %}
+<div class="jumbotron text-center">
+    <h1 class="display-4">Welcome to Party Playlist</h1>
+    <p class="lead">Create and manage your party playlists with ease!</p>
+    <hr class="my-4">
+    <p>Join us today and start making your parties more memorable.</p>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}" role="button">Sign Up</a>
+    <a class="btn btn-secondary btn-lg" href="{{ url_for('auth.login') }}" role="button">Log In</a>
+</div>
+
 <div class="row mt-5">
-    <div class="col-md-6">
-        <h1>Welcome to Party Playlist App</h1>
-        <p>Manage events and playlists interactively.</p>
-        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Register</a>
+    <div class="col-md-4">
+        <h3>Create Events</h3>
+        <p>Easily create and manage your party events.</p>
+    </div>
+    <div class="col-md-4">
+        <h3>Collaborate on Playlists</h3>
+        <p>Work together with your guests to create the perfect playlist.</p>
+    </div>
+    <div class="col-md-4">
+        <h3>Spotify Integration</h3>
+        <p>Seamlessly connect with your Spotify account for a better music experience.</p>
     </div>
 </div>
 {% endblock %}

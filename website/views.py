@@ -1,79 +1,37 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
-from functools import wraps
-import jwt
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
 from .models import db, User, Event, Playlist, Song, Vote, Mood
-import datetime
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
-from config import Config
-import os
+from .spotify_utils import get_spotify_client
+from datetime import datetime
+import random
+import string
 
 views = Blueprint('views', __name__)
-
-def create_spotify_client():
-    return spotipy.Spotify(auth_manager=SpotifyOAuth(
-        client_id=current_app.config['SPOTIPY_CLIENT_ID'],
-        client_secret=current_app.config['SPOTIPY_CLIENT_SECRET'],
-        redirect_uri=current_app.config['SPOTIPY_REDIRECT_URI'],
-        scope="playlist-modify-public,playlist-modify-private"))
-
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = session.get('token')
-        if not token:
-            flash('Login required to access this page.', 'danger')
-            return redirect(url_for('auth.login'))
-        try:
-            data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = User.query.filter_by(id=data['user_id']).first()
-        except:
-            flash('Token is invalid or expired.', 'danger')
-            return redirect(url_for('auth.login'))
-        return f(current_user, *args, **kwargs)
-    return decorated
 
 @views.route('/')
 def index():
     return render_template('index.html')
 
 @views.route('/dashboard')
-@token_required
-def dashboard(current_user):
+@login_required
+def dashboard():
     hosted_events = Event.query.filter_by(host_id=current_user.id).all()
     joined_events = current_user.joined_events
     return render_template('dashboard.html', hosted_events=hosted_events, joined_events=joined_events)
 
-@views.route('/events/create', methods=['GET', 'POST'])
-@token_required
-def create_event(current_user):
-    mood_options = [
-        {'id': 1, 'name': 'Energetic'},
-        {'id': 2, 'name': 'Chill'},
-        {'id': 3, 'name': 'Romantic'},
-        {'id': 4, 'name': 'Upbeat'},
-        {'id': 5, 'name': 'Mellow'}
-    ]
-
-    sp = create_spotify_client()
-    playlists = sp.current_user_playlists()['items']
-
+@views.route('/create_event', methods=['GET', 'POST'])
+@login_required
+def create_event():
     if request.method == 'POST':
-        title = request.form['title']
-        description = request.form['description']
-        date_event_str = request.form['date_event']
-        end_time_str = request.form['end_time']
-        mood_id = request.form['mood_id']
-        playlist_id = request.form['playlist_id']
-        
-        try:
-            date_event = datetime.datetime.fromisoformat(date_event_str)
-            end_time = datetime.datetime.fromisoformat(end_time_str)
-        except ValueError:
-            flash('Invalid date format. Please enter a valid date.', 'danger')
-            return redirect(url_for('views.create_event'))
+        title = request.form.get('title')
+        description = request.form.get('description')
+        date_event = datetime.strptime(request.form.get('date_event'), '%Y-%m-%dT%H:%M')
+        end_time = datetime.strptime(request.form.get('end_time'), '%Y-%m-%dT%H:%M')
+        mood_id = request.form.get('mood_id')
+        playlist_id = request.form.get('playlist_id')
 
-        invite_code = 'INVITE-' + str(len(Event.query.all()) + 1)
+        invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        
         event = Event(
             title=title,
             description=description,
@@ -87,82 +45,147 @@ def create_event(current_user):
         event.calculate_duration()
         db.session.add(event)
         db.session.commit()
+        
         flash('Event created successfully!', 'success')
         return redirect(url_for('views.dashboard'))
+
+    mood_options = Mood.query.all()
+    sp = get_spotify_client()
+    if sp:
+        playlists = sp.current_user_playlists()['items']
+    else:
+        playlists = []
+        flash('Unable to fetch Spotify playlists. Please check your Spotify connection.', 'warning')
     
     return render_template('create_event.html', mood_options=mood_options, playlists=playlists)
 
-@views.route('/events/<int:event_id>')
-@token_required
-def event(current_user, event_id):
+@views.route('/event/<int:event_id>')
+@login_required
+def event(event_id):
     event = Event.query.get_or_404(event_id)
     if event.host_id != current_user.id and current_user not in event.attendees:
-        flash('Not authorized to view this event.', 'danger')
+        flash('You do not have permission to view this event.', 'danger')
         return redirect(url_for('views.dashboard'))
-    return render_template('event.html', event=event)
-
-@views.route('/songs/search/<int:event_id>', methods=['GET', 'POST'])
-@token_required
-def search_song(current_user, event_id):
-    event = Event.query.get_or_404(event_id)
-    if request.method == 'POST':
-        query = request.form['query']
-        sp = create_spotify_client()
-        results = sp.search(q=query, type='track', limit=10)
-        tracks = results['tracks']['items']
-        return render_template('search_song.html', event_id=event_id, tracks=tracks)
-    return render_template('search_song.html', event_id=event_id)
-
-@views.route('/songs/add/<int:event_id>/<spotify_track_id>', methods=['POST'])
-@token_required
-def add_song(current_user, event_id, spotify_track_id):
-    event = Event.query.get_or_404(event_id)
-    sp = create_spotify_client()
-    track = sp.track(spotify_track_id)
-    title = track['name']
-    artist = ', '.join([artist['name'] for artist in track['artists']])
     
-    # Add song to Spotify playlist
-    sp.playlist_add_items(event.spotify_playlist_id, [spotify_track_id])
+    sp = get_spotify_client()
+    if sp and event.spotify_playlist_id:
+        playlist = sp.playlist(event.spotify_playlist_id)
+        tracks = playlist['tracks']['items']
+    else:
+        tracks = []
+        flash('Unable to fetch playlist tracks. Please check your Spotify connection.', 'warning')
     
-    # Add song to database
-    song = Song(title=title, artist=artist, spotify_track_id=spotify_track_id, playlist_id=event.playlists[0].id, mood_id=event.mood_id)
-    db.session.add(song)
-    db.session.commit()
-    flash('Song added to the playlist!', 'success')
-    return redirect(url_for('views.event', event_id=event_id))
+    return render_template('view_event.html', event=event, tracks=tracks)
 
-@views.route('/events/join', methods=['GET', 'POST'])
-@token_required
-def join_event(current_user):
+@views.route('/join_event', methods=['GET', 'POST'])
+@login_required
+def join_event():
     if request.method == 'POST':
-        invite_code = request.form['invite_code']
+        invite_code = request.form.get('invite_code')
         event = Event.query.filter_by(invite_code=invite_code).first()
         if event:
-            event.attendees.append(current_user)
-            db.session.commit()
-            flash('Successfully joined the event!', 'success')
+            if current_user not in event.attendees:
+                event.attendees.append(current_user)
+                db.session.commit()
+                flash('Successfully joined the event!', 'success')
+            else:
+                flash('You are already attending this event.', 'info')
             return redirect(url_for('views.event', event_id=event.id))
         else:
             flash('Invalid invite code. Please try again.', 'danger')
-            return redirect(url_for('views.join_event'))
     return render_template('join_event.html')
 
-@views.route('/songs/vote/<int:song_id>', methods=['POST'])
-@token_required
-def vote_song(current_user, song_id):
+@views.route('/vote/<int:song_id>', methods=['POST'])
+@login_required
+def vote_song(song_id):
     song = Song.query.get_or_404(song_id)
     event = song.playlist.event
     if current_user not in event.attendees and current_user != event.host:
         flash('Not authorized to vote in this event.', 'danger')
         return redirect(url_for('views.dashboard'))
-    vote = Vote(user_id=current_user.id, song_id=song.id, event_id=event.id)
-    db.session.add(vote)
+    
+    existing_vote = Vote.query.filter_by(user_id=current_user.id, song_id=song.id).first()
+    if existing_vote:
+        db.session.delete(existing_vote)
+        flash('Vote removed!', 'info')
+    else:
+        vote = Vote(user_id=current_user.id, song_id=song.id, event_id=event.id)
+        db.session.add(vote)
+        flash('Vote added!', 'success')
+    
     db.session.commit()
-    flash('Vote added!', 'success')
     return redirect(url_for('views.event', event_id=event.id))
 
+@views.route('/search_songs')
+@login_required
+def search_songs():
+    query = request.args.get('query', '')
+    event_id = request.args.get('event_id')
+    event = Event.query.get_or_404(event_id)
+    
+    if event.host_id != current_user.id and current_user not in event.attendees:
+        return jsonify({'error': 'Not authorized'}), 403
+    
+    sp = get_spotify_client()
+    if sp:
+        results = sp.search(q=query, type='track', limit=10)
+        tracks = results['tracks']['items']
+    else:
+        tracks = []
+        flash('Unable to search songs. Please check your Spotify connection.', 'warning')
+    
+    return render_template('search_songs.html', tracks=tracks, event_id=event_id)
+
+@views.route('/add_song/<int:event_id>/<string:track_id>', methods=['POST'])
+@login_required
+def add_song(event_id, track_id):
+    event = Event.query.get_or_404(event_id)
+    if event.host_id != current_user.id and current_user not in event.attendees:
+        flash('You do not have permission to add songs to this event.', 'danger')
+        return redirect(url_for('views.dashboard'))
+    
+    sp = get_spotify_client()
+    if sp:
+        track = sp.track(track_id)
+        sp.user_playlist_add_tracks(current_user.id, event.spotify_playlist_id, [track_id])
+        
+        new_song = Song(
+            title=track['name'],
+            artist=', '.join([artist['name'] for artist in track['artists']]),
+            spotify_track_id=track_id,
+            playlist_id=event.playlist[0].id if event.playlist else None,
+            mood_id=event.mood_id
+        )
+        db.session.add(new_song)
+        db.session.commit()
+        flash('Song added to the playlist!', 'success')
+    else:
+        flash('Unable to add song. Please check your Spotify connection.', 'warning')
+    
+    return redirect(url_for('views.event', event_id=event_id))
+
 @views.route('/profile')
-@token_required
-def profile(current_user):
+@login_required
+def profile():
     return render_template('profile.html', user=current_user)
+
+@views.route('/edit_profile', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        
+        if User.query.filter(User.username == username, User.id != current_user.id).first():
+            flash('Username already taken.', 'danger')
+        elif User.query.filter(User.email == email, User.id != current_user.id).first():
+            flash('Email already in use.', 'danger')
+        else:
+            current_user.username = username
+            current_user.email = email
+            db.session.commit()
+            flash('Profile updated successfully!', 'success')
+        
+        return redirect(url_for('views.profile'))
+    
+    return render_template('edit_profile.html', user=current_user)

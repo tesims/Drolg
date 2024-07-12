@@ -1,17 +1,14 @@
-{% extends 'layout.html' %}
+{% extends "layout.html" %}
 {% block title %}Join Event{% endblock %}
 
 {% block content %}
-<div class="row mt-3">
-    <div class="col-md-6">
-        <h2>Join Event</h2>
-        <form method="post" action="{{ url_for('views.join_event') }}">
-            <div class="mb-3">
-                <label for="invite_code" class="form-label">Invite Code</label>
-                <input type="text" class="form-control" id="invite_code" name="invite_code" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Join Event</button>
-        </form>
+<h1 class="mb-4">Join an Event</h1>
+
+<form method="POST" action="{{ url_for('views.join_event') }}">
+    <div class="mb-3">
+        <label for="invite_code" class="form-label">Enter Event Invite Code</label>
+        <input type="text" class="form-control" id="invite_code" name="invite_code" required>
     </div>
-</div>
+    <button type="submit" class="btn btn-primary">Join Event</button>
+</form>
 {% endblock %}

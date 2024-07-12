@@ -1,17 +1,46 @@
-{% extends 'layout.html' %}
-{% block title %}Create Playlist{% endblock %}
+{% extends "layout.html" %}
+{% block title %}Create Event and Playlist{% endblock %}
 
 {% block content %}
-<div class="row mt-3">
-    <div class="col-md-6">
-        <h2>Create New Playlist</h2>
-        <form method="post" action="{{ url_for('views.create_playlist', event_id=event_id) }}">
-            <div class="mb-3">
-                <label for="title" class="form-label">Playlist Title</label>
-                <input type="text" class="form-control" id="title" name="title" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Create Playlist</button>
-        </form>
+<h1 class="mb-4">Create a New Event and Playlist</h1>
+<form method="POST" action="{{ url_for('views.create_playlist') }}">
+    <div class="mb-3">
+        <label for="title" class="form-label">Event Title</label>
+        <input type="text" class="form-control" id="title" name="title" required>
     </div>
-</div>
+    <div class="mb-3">
+        <label for="description" class="form-label">Event Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+    </div>
+    <div class="mb-3">
+        <label for="start_time" class="form-label">Start Time</label>
+        <input type="datetime-local" class="form-control" id="start_time" name="start_time" required>
+    </div>
+    <div class="mb-3">
+        <label for="end_time" class="form-label">End Time</label>
+        <input type="datetime-local" class="form-control" id="end_time" name="end_time" required>
+    </div>
+    <div class="mb-3">
+        <label for="mood" class="form-label">Event Mood</label>
+        <select class="form-control" id="mood" name="mood" required>
+            {% for mood in moods %}
+                <option value="{{ mood.id }}">{{ mood.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="playlist_name" class="form-label">New Playlist Name</label>
+        <input type="text" class="form-control" id="playlist_name" name="playlist_name" required>
+    </div>
+    <div class="mb-3">
+        <label for="existing_playlist" class="form-label">Or Select Existing Playlist</label>
+        <select class="form-control" id="existing_playlist" name="existing_playlist">
+            <option value="">Create New Playlist</option>
+            {% for playlist in user_playlists %}
+                <option value="{{ playlist.id }}">{{ playlist.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Create Event and Playlist</button>
+</form>
 {% endblock %}

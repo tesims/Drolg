@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block title %}Events{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Events</h1>
+
+<ul class="nav nav-tabs mb-3" id="eventTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="hosted-tab" data-bs-toggle="tab" data-bs-target="#hosted" type="button" role="tab" aria-controls="hosted" aria-selected="true">Hosted Events</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="attending-tab" data-bs-toggle="tab" data-bs-target="#attending" type="button" role="tab" aria-controls="attending" aria-selected="false">Attending Events</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="eventTabsContent">
+    <div class="tab-pane fade show active" id="hosted" role="tabpanel" aria-labelledby="hosted-tab">
+        {% if hosted_events %}
+            <div class="list-group">
+                {% for event in hosted_events %}
+                    <a href="{{ url_for('views.event', event_id=event.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ event.title }}</h5>
+                            <small>{{ event.date_event.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                        <p class="mb-1">{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>
+                        <small>{{ event.attendees|length }} attendees</small>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>You haven't hosted any events yet.</p>
+        {% endif %}
+        <a href="{{ url_for('views.create_event') }}" class="btn btn-primary mt-3">Create New Event</a>
+    </div>
+    <div class="tab-pane fade" id="attending" role="tabpanel" aria-labelledby="attending-tab">
+        {% if attending_events %}
+            <div class="list-group">
+                {% for event in attending_events %}
+                    <a href="{{ url_for('views.event', event_id=event.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ event.title }}</h5>
+                            <small>{{ event.date_event.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                        <p class="mb-1">{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>
+                        <small>Hosted by {{ event.host.username }}</small>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>You're not attending any events yet.</p>
+        {% endif %}
+        <a href="{{ url_for('views.join_event') }}" class="btn btn-secondary mt-3">Join an Event</a>
+    </div>
+</div>
+{% endblock %}

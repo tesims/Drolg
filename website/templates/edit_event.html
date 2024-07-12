@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block title %}Edit Event{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Edit Event: {{ event.title }}</h1>
+<form method="POST">
+    <div class="mb-3">
+        <label for="title" class="form-label">Event Title</label>
+        <input type="text" class="form-control" id="title" name="title" value="{{ event.title }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3">{{ event.description }}</textarea>
+    </div>
+    <div class="mb-3">
+        <label for="date_event" class="form-label">Event Date and Time</label>
+        <input type="datetime-local" class="form-control" id="date_event" name="date_event" value="{{ event.date_event.strftime('%Y-%m-%dT%H:%M') }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="end_time" class="form-label">End Time</label>
+        <input type="datetime-local" class="form-control" id="end_time" name="end_time" value="{{ event.end_time.strftime('%Y-%m-%dT%H:%M') }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="mood_id" class="form-label">Event Mood</label>
+        <select class="form-control" id="mood_id" name="mood_id" required>
+            {% for mood in mood_options %}
+                <option value="{{ mood.id }}" {% if mood.id == event.mood_id %}selected{% endif %}>{{ mood.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Update Event</button>
+    <a href="{{ url_for('views.event', event_id=event.id) }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

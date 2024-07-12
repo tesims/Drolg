@@ -1,13 +1,16 @@
 from . import db
 from datetime import datetime, timedelta
+from flask_login import UserMixin
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(150), nullable=False)
-    spotify_id = db.Column(db.String(150), unique=True, nullable=True)
+    spotify_id = db.Column(db.String(150), nullable=True)
     spotify_token = db.Column(db.String(500), nullable=True)
+    refresh_token = db.Column(db.String(500), nullable=True)
+    token_expiry = db.Column(db.Integer, nullable=True)
     joined_events = db.relationship('Event', secondary='user_event', back_populates='attendees')
 
 class Event(db.Model):
@@ -37,6 +40,7 @@ class Playlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    songs = db.relationship('Song', backref='playlist', lazy=True)
 
 class Song(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -45,6 +49,7 @@ class Song(db.Model):
     spotify_track_id = db.Column(db.String(150), nullable=False)
     playlist_id = db.Column(db.Integer, db.ForeignKey('playlist.id'), nullable=False)
     mood_id = db.Column(db.Integer, db.ForeignKey('mood.id'), nullable=False)
+    votes = db.relationship('Vote', backref='song', lazy=True)
 
 class Vote(db.Model):
     id = db.Column(db.Integer, primary_key=True)

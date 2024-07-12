@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Your Profile</h1>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">{{ current_user.username }}</h5>
+        <p class="card-text"><strong>Email:</strong> {{ current_user.email }}</p>
+        <p class="card-text"><strong>Spotify Account:</strong> 
+            {% if current_user.spotify_id %}
+                Linked
+                <a href="{{ url_for('auth.unlink_spotify') }}" class="btn btn-sm btn-warning">Unlink Spotify</a>
+            {% else %}
+                Not linked
+                <a href="{{ url_for('auth.spotify_login') }}" class="btn btn-sm btn-primary">Link Spotify Account</a>
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<h2 class="mt-4">Edit Profile</h2>
+<form method="POST" action="{{ url_for('views.edit_profile') }}">
+    <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" class="form-control" id="username" name="username" value="{{ current_user.username }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" value="{{ current_user.email }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="new_password" class="form-label">New Password (leave blank to keep current)</label>
+        <input type="password" class="form-control" id="new_password" name="new_password">
+    </div>
+    <div class="mb-3">
+        <label for="confirm_password" class="form-label">Confirm New Password</label>
+        <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+    </div>
+    <button type="submit" class="btn btn-primary">Update Profile</button>
+</form>
+{% endblock %}

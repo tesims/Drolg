@@ -1,36 +1,41 @@
-<!-- create_event.html -->
+{% extends "layout.html" %}
+{% block title %}Create Event{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Create a New Event</h1>
 <form method="POST">
-    <div class="form-group">
-        <label for="title">Event Title</label>
+    <div class="mb-3">
+        <label for="title" class="form-label">Event Title</label>
         <input type="text" class="form-control" id="title" name="title" required>
     </div>
-    <div class="form-group">
-        <label for="description">Description</label>
-        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
     </div>
-    <div class="form-group">
-        <label for="date_event">Start Date and Time</label>
+    <div class="mb-3">
+        <label for="date_event" class="form-label">Event Date and Time</label>
         <input type="datetime-local" class="form-control" id="date_event" name="date_event" required>
     </div>
-    <div class="form-group">
-        <label for="end_time">End Date and Time</label>
+    <div class="mb-3">
+        <label for="end_time" class="form-label">End Time</label>
         <input type="datetime-local" class="form-control" id="end_time" name="end_time" required>
     </div>
-    <div class="form-group">
-        <label for="mood_id">Mood</label>
+    <div class="mb-3">
+        <label for="mood_id" class="form-label">Event Mood</label>
         <select class="form-control" id="mood_id" name="mood_id" required>
             {% for mood in mood_options %}
-            <option value="{{ mood.id }}">{{ mood.name }}</option>
+                <option value="{{ mood.id }}">{{ mood.name }}</option>
             {% endfor %}
         </select>
     </div>
-    <div class="form-group">
-        <label for="spotify_playlist_id">Select Playlist</label>
-        <select class="form-control" id="spotify_playlist_id" name="spotify_playlist_id" required>
+    <div class="mb-3">
+        <label for="playlist_id" class="form-label">Spotify Playlist</label>
+        <select class="form-control" id="playlist_id" name="playlist_id" required>
             {% for playlist in playlists %}
-            <option value="{{ playlist.id }}">{{ playlist.name }}</option>
+                <option value="{{ playlist.id }}">{{ playlist.name }}</option>
             {% endfor %}
         </select>
     </div>
     <button type="submit" class="btn btn-primary">Create Event</button>
 </form>
+{% endblock %}
