@@ -1,4 +1,6 @@
-#!/workspaces/flask-webapp/venv/bin/python3
+#!/bin/sh
+'''exec' "/Users/academics/untitled folder/flask-webapp/venv/bin/python3.12" "$0" "$@"
+' '''
 # -*- coding: utf-8 -*-
 import re
 import sys

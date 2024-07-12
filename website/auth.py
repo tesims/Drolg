@@ -5,6 +5,7 @@ import jwt
 import datetime
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+from urllib.parse import quote, urlparse, parse_qs
 
 auth = Blueprint('auth', __name__)
 
@@ -44,7 +45,29 @@ def register():
 @auth.route('/spotify_login')
 def spotify_login():
     sp_oauth = create_spotify_oauth()
+    
+    # Debug: Print all relevant configuration
+    print(f"SPOTIPY_CLIENT_ID: {current_app.config.get('SPOTIPY_CLIENT_ID', 'Not set')}")
+    print(f"SPOTIPY_CLIENT_SECRET: {'Set' if current_app.config.get('SPOTIPY_CLIENT_SECRET') else 'Not set'}")
+    print(f"SPOTIPY_REDIRECT_URI: {current_app.config.get('SPOTIPY_REDIRECT_URI', 'Not set')}")
+    
+    # Get and print the authorization URL
     auth_url = sp_oauth.get_authorize_url()
+    print(f"Generated Auth URL: {auth_url}")
+    
+    # Parse and print the redirect_uri from the auth_url
+    from urllib.parse import urlparse, parse_qs
+    parsed_url = urlparse(auth_url)
+    redirect_uri = parse_qs(parsed_url.query).get('redirect_uri', ['Not found'])[0]
+    print(f"Redirect URI in auth URL: {redirect_uri}")
+    
+    # Check if the redirect_uri in the auth_url matches the configured one
+    configured_uri = current_app.config['SPOTIPY_REDIRECT_URI']
+    if quote(configured_uri) != quote(redirect_uri):
+        print(f"WARNING: Mismatch in redirect URIs!")
+        print(f"Configured: {configured_uri}")
+        print(f"In auth URL: {redirect_uri}")
+    
     return redirect(auth_url)
 
 @auth.route('/callback')

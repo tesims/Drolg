@@ -1,7 +1,8 @@
-Flask
-Flask-Login
-Flask-SQLAlchemy
+flask
+flask-login
+flask_sqlalchemy
 spotipy
-Werkzeug
+werkzeug
 PyJWT
-Flask-Migrate
+flask-migrate
+python-dotenv
