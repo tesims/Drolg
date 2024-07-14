@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from .models import db, User, Event, Playlist, Song, Vote, Mood
 from .spotify_utils import get_spotify_client
@@ -27,37 +27,59 @@ def create_event():
         description = request.form.get('description')
         date_event = datetime.strptime(request.form.get('date_event'), '%Y-%m-%dT%H:%M')
         end_time = datetime.strptime(request.form.get('end_time'), '%Y-%m-%dT%H:%M')
-        mood_id = request.form.get('mood_id')
-        playlist_id = request.form.get('playlist_id')
+        mood_name = request.form.get('mood')
+        playlist_option = request.form.get('playlist_option')
 
-        invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-        
-        event = Event(
-            title=title,
-            description=description,
-            date_event=date_event,
-            end_time=end_time,
-            invite_code=invite_code,
-            host_id=current_user.id,
-            spotify_playlist_id=playlist_id,
-            mood_id=mood_id
-        )
-        event.calculate_duration()
-        db.session.add(event)
-        db.session.commit()
-        
-        flash('Event created successfully!', 'success')
-        return redirect(url_for('views.dashboard'))
+        sp = get_spotify_client()
+        if not sp:
+            flash('Failed to connect to Spotify. Please check your Spotify connection.', 'danger')
+            return redirect(url_for('views.create_event'))
 
-    mood_options = Mood.query.all()
-    sp = get_spotify_client()
-    if sp:
-        playlists = sp.current_user_playlists()['items']
-    else:
-        playlists = []
-        flash('Unable to fetch Spotify playlists. Please check your Spotify connection.', 'warning')
-    
-    return render_template('create_event.html', mood_options=mood_options, playlists=playlists)
+        try:
+            # Find or create the Mood
+            mood = Mood.query.filter_by(name=mood_name).first()
+            if not mood:
+                mood = Mood(name=mood_name)
+                db.session.add(mood)
+                db.session.commit()
+
+            if playlist_option == 'new':
+                playlist_name = request.form.get('new_playlist_name')
+                spotify_playlist = sp.user_playlist_create(user=sp.me()['id'], name=playlist_name)
+            else:
+                existing_playlist_id = request.form.get('existing_playlist_id')
+                spotify_playlist = sp.playlist(existing_playlist_id)
+
+            event = Event(
+                title=title,
+                description=description,
+                date_event=date_event,
+                end_time=end_time,
+                mood_id=mood.id,
+                host_id=current_user.id,
+                spotify_playlist_id=spotify_playlist['id']
+            )
+            db.session.add(event)
+            db.session.commit()
+
+            flash('Event created successfully!', 'success')
+            return redirect(url_for('views.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error creating event: {str(e)}")
+            flash('An error occurred while creating the event. Please try again.', 'danger')
+
+    user_playlists = []
+    try:
+        sp = get_spotify_client()
+        if sp:
+            user_playlists = sp.current_user_playlists()['items']
+    except Exception as e:
+        current_app.logger.error(f"Error fetching user playlists: {str(e)}")
+        flash('Unable to fetch your Spotify playlists. Some features may be limited.', 'warning')
+
+    moods = Mood.query.all()
+    return render_template('create_event.html', user_playlists=user_playlists, moods=moods)
 
 @views.route('/event/<int:event_id>')
 @login_required
@@ -75,7 +97,7 @@ def event(event_id):
         tracks = []
         flash('Unable to fetch playlist tracks. Please check your Spotify connection.', 'warning')
     
-    return render_template('view_event.html', event=event, tracks=tracks)
+    return render_template('event.html', event=event, tracks=tracks)
 
 @views.route('/join_event', methods=['GET', 'POST'])
 @login_required
@@ -172,6 +194,23 @@ def profile():
 @views.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
 def edit_profile():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        
+        if User.query.filter(User.username == username, User.id != current_user.id).first():
+            flash('Username already taken.', 'danger')
+        elif User.query.filter(User.email == email, User.id != current_user.id).first():
+            flash('Email already in use.', 'danger')
+        else:
+            current_user.username = username
+            current_user.email = email
+            db.session.commit()
+            flash('Profile updated successfully!', 'success')
+        
+        return redirect(url_for('views.profile'))
+    
+    return render_template('edit_profile.html', user=current_user)
     if request.method == 'POST':
         username = request.form.get('username')
         email = request.form.get('email')

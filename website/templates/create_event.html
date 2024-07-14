@@ -21,21 +21,46 @@
         <input type="datetime-local" class="form-control" id="end_time" name="end_time" required>
     </div>
     <div class="mb-3">
-        <label for="mood_id" class="form-label">Event Mood</label>
-        <select class="form-control" id="mood_id" name="mood_id" required>
-            {% for mood in mood_options %}
-                <option value="{{ mood.id }}">{{ mood.name }}</option>
+        <label for="mood" class="form-label">Event Mood</label>
+        <select class="form-control" id="mood" name="mood" required>
+            {% for mood in moods %}
+                <option value="{{ mood.name }}">{{ mood.name }}</option>
             {% endfor %}
         </select>
     </div>
     <div class="mb-3">
-        <label for="playlist_id" class="form-label">Spotify Playlist</label>
-        <select class="form-control" id="playlist_id" name="playlist_id" required>
-            {% for playlist in playlists %}
+        <label for="playlist_option" class="form-label">Playlist Option</label>
+        <select class="form-control" id="playlist_option" name="playlist_option" required>
+            <option value="new">Create New Playlist</option>
+            <option value="existing">Use Existing Playlist</option>
+        </select>
+    </div>
+    <div class="mb-3" id="new_playlist_div">
+        <label for="new_playlist_name" class="form-label">New Playlist Name</label>
+        <input type="text" class="form-control" id="new_playlist_name" name="new_playlist_name">
+    </div>
+    <div class="mb-3" id="existing_playlist_div" style="display: none;">
+        <label for="existing_playlist_id" class="form-label">Select Existing Playlist</label>
+        <select class="form-control" id="existing_playlist_id" name="existing_playlist_id">
+            {% for playlist in user_playlists %}
                 <option value="{{ playlist.id }}">{{ playlist.name }}</option>
             {% endfor %}
         </select>
     </div>
     <button type="submit" class="btn btn-primary">Create Event</button>
 </form>
+
+<script>
+    document.getElementById('playlist_option').addEventListener('change', function() {
+        var newPlaylistDiv = document.getElementById('new_playlist_div');
+        var existingPlaylistDiv = document.getElementById('existing_playlist_div');
+        if (this.value === 'new') {
+            newPlaylistDiv.style.display = 'block';
+            existingPlaylistDiv.style.display = 'none';
+        } else {
+            newPlaylistDiv.style.display = 'none';
+            existingPlaylistDiv.style.display = 'block';
+        }
+    });
+</script>
 {% endblock %}

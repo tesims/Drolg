@@ -15,15 +15,21 @@ def create_spotify_oauth():
     )
 
 def get_spotify_client():
-    token_info = session.get('token_info')
-    if not token_info:
+    cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session)
+    auth_manager = SpotifyOAuth(
+        client_id=current_app.config['SPOTIPY_CLIENT_ID'],
+        client_secret=current_app.config['SPOTIPY_CLIENT_SECRET'],
+        redirect_uri=current_app.config['SPOTIPY_REDIRECT_URI'],
+        scope="playlist-modify-public playlist-modify-private",
+        cache_handler=cache_handler,
+        show_dialog=True
+    )
+
+    if not auth_manager.validate_token(cache_handler.get_cached_token()):
         return None
 
-    if is_token_expired(token_info):
-        token_info = refresh_token(token_info['refresh_token'])
-        session['token_info'] = token_info
+    return spotipy.Spotify(auth_manager=auth_manager)
 
-    return spotipy.Spotify(auth=token_info['access_token'])
 
 def is_token_expired(token_info):
     now = int(time.time())
