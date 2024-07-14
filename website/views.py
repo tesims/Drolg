@@ -78,8 +78,7 @@ def create_event():
         current_app.logger.error(f"Error fetching user playlists: {str(e)}")
         flash('Unable to fetch your Spotify playlists. Some features may be limited.', 'warning')
 
-    moods = Mood.query.all()
-    return render_template('create_event.html', user_playlists=user_playlists, moods=moods)
+    return render_template('create_event.html', user_playlists=user_playlists)
 
 @views.route('/event/<int:event_id>')
 @login_required
