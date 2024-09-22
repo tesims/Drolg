@@ -19,6 +19,7 @@ def dashboard():
     joined_events = current_user.joined_events
     return render_template('dashboard.html', hosted_events=hosted_events, joined_events=joined_events)
 
+
 @views.route('/create_event', methods=['GET', 'POST'])
 @login_required
 def create_event():
