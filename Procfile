@@ -1,1 +1,1 @@
-web: python3.10 -m gunicorn wsgi:app
+web: python -m gunicorn wsgi:app
